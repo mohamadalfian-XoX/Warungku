@@ -5,8 +5,6 @@
   <meta name="theme-color" content="#123b2a"><title>WarungKu — Belanja kebutuhan harian</title>
   <link rel="stylesheet" href="./style.css">
 </head>
-  <script src="https://cdn.jsdelivr.net/npm/eruda"></script>
-<script>eruda.init();</script>
 <body>
 <header class="topbar"><a class="brand" href="#home"><span class="brand-mark">W</span><span>WarungKu<small>Belanja dekat, lebih mudah</small></span></a><nav><a href="#home" class="nav-link active">Beranda</a><a href="#catalog" class="nav-link">Produk</a><button id="cart-open" class="cart-button" aria-label="Buka keranjang">🛒 <span>Keranjang</span><b id="cart-count">0</b></button><button id="admin-open" class="admin-link">Admin ↗</button></nav></header>
 <main id="home">
@@ -21,4 +19,7 @@
 <aside id="cart-drawer" class="drawer" aria-label="Keranjang belanja" aria-hidden="true"><div class="drawer-head"><div><span class="eyebrow">PESANANMU</span><h2>Keranjang</h2></div><button class="icon-button" id="cart-close" aria-label="Tutup keranjang">✕</button></div><div id="cart-items" class="cart-items"></div><div class="drawer-foot"><div class="total-row"><span>Subtotal sementara</span><strong id="cart-subtotal">Rp0</strong></div><p class="muted small">Harga dan stok akan diperiksa kembali saat checkout.</p><button id="checkout-open" class="primary-button full">Lanjut checkout <span>→</span></button></div></aside>
 <div id="modal-root"></div>
 <script src="./app.js" defer></script>
-</body></html>
+<script src="https://cdn.jsdelivr.net/npm/eruda"></script>
+<script>eruda.init();</script>
+</body>
+</html>
