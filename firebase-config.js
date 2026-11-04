@@ -4,10 +4,10 @@
 // akses sebenarnya diatur lewat Firestore Security Rules (lihat firestore.rules).
 
 export const firebaseConfig = {
-  apiKey: "GANTI_DENGAN_API_KEY",
-  authDomain: "GANTI_DENGAN_AUTH_DOMAIN",
-  projectId: "GANTI_DENGAN_PROJECT_ID",
-  storageBucket: "GANTI_DENGAN_STORAGE_BUCKET",
-  messagingSenderId: "GANTI_DENGAN_SENDER_ID",
-  appId: "GANTI_DENGAN_APP_ID"
+  apiKey: "AIzaSyD1xMWyjKg0BfDlALkzjRRpeXCfTr4TsS4",
+  authDomain: "warungku-94c41.firebaseapp.com",
+  projectId: "warungku-94c41",
+  storageBucket: "warungku-94c41.firebasestorage.app",
+  messagingSenderId: "616862373218",
+  appId: "1:616862373218:web:9d315070301e0fe7d8c83b"
 };
