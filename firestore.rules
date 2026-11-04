@@ -1,0 +1,21 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Produk: semua orang boleh lihat, cuma admin yang login yang boleh ubah
+    match /products/{productId} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+
+    // Pesanan: semua orang boleh buat pesanan baru dan buka 1 pesanan
+    // pakai nomornya (untuk fitur Lacak Pesanan). Lihat SEMUA pesanan
+    // (dashboard admin) dan ubah status/pembayaran cuma boleh admin.
+    match /orders/{orderId} {
+      allow get: if true;
+      allow list: if request.auth != null;
+      allow create: if true;
+      allow update, delete: if request.auth != null;
+    }
+  }
+}
