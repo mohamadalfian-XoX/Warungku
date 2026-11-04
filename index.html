@@ -1,25 +1,112 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="id">
 <head>
-  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-  <meta name="theme-color" content="#123b2a"><title>WarungKu — Belanja kebutuhan harian</title>
-  <link rel="stylesheet" href="./style.css">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#123b2a">
+  <title>WarungKu</title>
+  <link rel="stylesheet" href="style.css">
 </head>
 <body>
-<header class="topbar"><a class="brand" href="#home"><span class="brand-mark">W</span><span>WarungKu<small>Belanja dekat, lebih mudah</small></span></a><nav><a href="#home" class="nav-link active">Beranda</a><a href="#catalog" class="nav-link">Produk</a><button id="cart-open" class="cart-button" aria-label="Buka keranjang">🛒 <span>Keranjang</span><b id="cart-count">0</b></button><button id="admin-open" class="admin-link">Admin ↗</button></nav></header>
-<main id="home">
-<section class="hero wrap"><div class="hero-copy"><div class="eyebrow"><span class="live-dot"></span> KEBUTUHAN HARIAN, DEKAT DARI RUMAH</div><h1>Belanja kebutuhan<br><em>jadi lebih mudah.</em></h1><p>Temukan kebutuhan harianmu, cek ketersediaan barang, lalu pesan tanpa perlu membuat akun.</p><div class="hero-actions"><a href="#catalog" class="primary-button">Mulai belanja <span>↗</span></a><div class="hero-note"><span>✓</span> Cek stok sebelum memesan</div></div><div class="hero-stats"><div><strong>Praktis</strong><span>Pesan dari rumah</span></div><div><strong>Transparan</strong><span>Harga terlihat jelas</span></div><div><strong>Fleksibel</strong><span>Ambil atau dikirim</span></div></div></div><div class="hero-art"><div class="art-glow"></div><div class="art-card art-card-back"><span>FRESH DAILY</span><div class="fruit">🍊</div><div class="fruit">🥑</div><div class="fruit">🍋</div></div><div class="art-card art-card-front"><div class="basket">🧺</div><span class="art-caption">Pilihan harianmu</span><strong>Lengkap. Dekat. Hemat.</strong><div class="art-chips"><span>🥬 Segar</span><span>🛍️ Praktis</span></div></div><div class="floating-tag"><span>✦</span> Belanja lebih simpel</div></div></section>
-<section class="benefits wrap"><div><span class="benefit-icon">📦</span><p><strong>Info stok jelas</strong><small>Tahu barang tersedia atau habis.</small></p></div><div><span class="benefit-icon">🛵</span><p><strong>Ambil atau dikirim</strong><small>Pilih cara menerima pesanan.</small></p></div><div><span class="benefit-icon">🔒</span><p><strong>Checkout praktis</strong><small>Tanpa perlu membuat akun.</small></p></div></section>
-<section id="catalog" class="catalog wrap"><div class="section-heading"><div><div class="eyebrow">KATALOG WARUNG</div><h2>Yang kamu butuhkan.</h2><p>Pilih produk dan periksa stok yang tersedia hari ini.</p></div><div class="catalog-count"><span class="count-dot"></span><span id="result-count">Memuat produk…</span></div></div><div class="catalog-controls"><label class="search-box"><span>⌕</span><input id="search" type="search" placeholder="Cari beras, minyak, minuman…" aria-label="Cari produk"></label><div id="categories" class="categories"></div></div><div id="products" class="product-grid"><div class="loading-card">Memuat katalog produk…</div></div><div id="catalog-error" class="notice hidden"></div></section>
-<section class="order-banner wrap"><div class="banner-icon">🛍️</div><div><span class="eyebrow">MUDAH DAN FLEKSIBEL</span><h2>Belanja sesuai caramu.</h2><p>Ambil langsung di warung atau pilih pengiriman. Pesanan akan diperiksa terlebih dahulu oleh admin.</p></div><a href="#catalog" class="secondary-button">Lihat produk <span>→</span></a></section>
+
+<header>
+  <strong>WarungKu</strong>
+  <button id="btnCartTop">🛒 Keranjang</button>
+</header>
+
+<nav>
+  <button data-tab="toko" class="active">Toko</button>
+  <button data-tab="lacak">Lacak Pesanan</button>
+  <button data-tab="admin">Admin</button>
+</nav>
+
+<!-- TAB TOKO -->
+<main id="tab-toko">
+  <h2>Yang kamu butuhkan</h2>
+  <div id="catalog"></div>
+
+  <div class="card hidden" id="cartCard">
+    <h3>Keranjang</h3>
+    <div id="cartItems"></div>
+    <div class="row" style="margin-top:12px;">
+      <strong>Subtotal</strong>
+      <strong class="price" id="cartSubtotal">Rp0</strong>
+    </div>
+    <button class="btn" id="btnOpenCheckout" style="margin-top:10px;">Lanjut checkout</button>
+  </div>
 </main>
-<footer><div class="wrap footer-inner"><a class="brand footer-brand" href="#home"><span class="brand-mark">W</span><span>WarungKu<small>Belanja dekat, lebih mudah</small></span></a><span>© <span id="year"></span> WarungKu. Website demo.</span><span class="footer-status"><i></i> Katalog online</span></div></footer>
-<div id="toast" class="toast" role="status" aria-live="polite"></div>
-<div id="drawer-backdrop" class="backdrop hidden"></div>
-<aside id="cart-drawer" class="drawer" aria-label="Keranjang belanja" aria-hidden="true"><div class="drawer-head"><div><span class="eyebrow">PESANANMU</span><h2>Keranjang</h2></div><button class="icon-button" id="cart-close" aria-label="Tutup keranjang">✕</button></div><div id="cart-items" class="cart-items"></div><div class="drawer-foot"><div class="total-row"><span>Subtotal sementara</span><strong id="cart-subtotal">Rp0</strong></div><p class="muted small">Harga dan stok akan diperiksa kembali saat checkout.</p><button id="checkout-open" class="primary-button full">Lanjut checkout <span>→</span></button></div></aside>
-<div id="modal-root"></div>
+
+<!-- TAB LACAK -->
+<main id="tab-lacak" class="hidden">
+  <h2>Lacak Pesanan</h2>
+  <div class="card">
+    <label>Nomor pesanan</label>
+    <input id="trackNum" placeholder="WK-XXXXXX">
+    <label>Kode akses</label>
+    <input id="trackCode" placeholder="6 karakter">
+    <button class="btn" id="btnTrack" style="margin-top:10px;">Cek status</button>
+  </div>
+  <div id="trackResult"></div>
+</main>
+
+<!-- TAB ADMIN -->
+<main id="tab-admin" class="hidden">
+  <div id="adminLogin" class="card">
+    <h2>Login Admin</h2>
+    <label>Email</label>
+    <input id="loginEmail" type="email">
+    <label>Kata sandi</label>
+    <input id="loginPass" type="password">
+    <button class="btn" id="btnLogin" style="margin-top:10px;">Masuk</button>
+    <p id="loginMsg" class="muted"></p>
+  </div>
+
+  <div id="adminArea" class="hidden">
+    <div class="row">
+      <span>Masuk sebagai <strong id="adminWho"></strong></span>
+      <button class="btn small secondary" id="btnLogout">Keluar</button>
+    </div>
+    <div class="card" id="adminSummary"></div>
+    <div class="row" style="gap:6px;">
+      <button class="btn small" id="subPesanan">Pesanan</button>
+      <button class="btn small secondary" id="subProduk">Produk</button>
+    </div>
+    <div id="admin-pesanan"></div>
+    <div id="admin-produk" class="hidden"></div>
+  </div>
+</main>
+
+<!-- MODAL CHECKOUT -->
+<div id="checkoutModal" class="modal hidden">
+  <div class="modal-box">
+    <h2>Checkout</h2>
+    <label>Nama</label>
+    <input id="cName">
+    <label>Nomor telepon</label>
+    <input id="cPhone" type="tel">
+    <label>Cara terima</label>
+    <select id="cFulfill">
+      <option value="pickup">Ambil sendiri</option>
+      <option value="delivery">Diantar</option>
+    </select>
+    <div id="addrWrap" class="hidden">
+      <label>Alamat pengiriman</label>
+      <textarea id="cAddress"></textarea>
+    </div>
+    <label>Catatan</label>
+    <textarea id="cNotes"></textarea>
+    <div class="row" style="margin-top:12px;gap:6px;">
+      <button class="btn secondary" id="btnCloseCheckout">Batal</button>
+      <button class="btn" id="btnSubmitOrder">Pesan</button>
+    </div>
+  </div>
+</div>
+
 <script type="module" src="app.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/eruda"></script>
-<script>eruda.init();</script>
+<script>
+  document.getElementById("btnCartTop").onclick = () =>
+    document.getElementById("cartCard").scrollIntoView({ behavior: "smooth" });
+</script>
+
 </body>
 </html>
