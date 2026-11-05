@@ -8,14 +8,20 @@ service cloud.firestore {
       allow write: if request.auth != null;
     }
 
-    // Pesanan: semua orang boleh buat pesanan baru dan buka 1 pesanan
-    // pakai nomornya (untuk fitur Lacak Pesanan). Lihat SEMUA pesanan
-    // (dashboard admin) dan ubah status/pembayaran cuma boleh admin.
+    // Pesanan: semua orang boleh buat pesanan dan buka 1 pesanan pakai nomornya.
+    // Lihat semua pesanan dan ubah status cuma boleh admin.
     match /orders/{orderId} {
       allow get: if true;
       allow list: if request.auth != null;
       allow create: if true;
       allow update, delete: if request.auth != null;
+    }
+
+    // Pengaturan pembayaran: semua orang bisa baca (untuk instruksi bayar),
+    // hanya admin yang bisa ubah
+    match /settings/{docId} {
+      allow read: if true;
+      allow write: if request.auth != null;
     }
   }
 }
