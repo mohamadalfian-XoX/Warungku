@@ -1,7 +1,7 @@
 import { firebaseConfig } from "./firebase-config.js";
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import {
-  getFirestore, collection, doc, addDoc, setDoc, updateDoc, getDoc,
+  getFirestore, collection, doc, addDoc, setDoc, updateDoc, getDoc, deleteDoc,
   query, orderBy, limit, onSnapshot, serverTimestamp
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import {
@@ -15,8 +15,19 @@ const auth = getAuth(app);
 const $ = id => document.getElementById(id);
 const DELIVERY_FEE = 5000;
 
+const PAYMENT_METHODS = {
+  transfer_bca: "Transfer BCA",
+  transfer_bri: "Transfer BRI",
+  transfer_mandiri: "Transfer Mandiri",
+  transfer_bni: "Transfer BNI",
+  qris: "QRIS",
+  ewallet: "E-wallet (DANA/OVO/GoPay/ShopeePay)",
+  va: "Virtual Account"
+};
+
 let allProducts = [];
 let allOrders = [];
+let paymentSettings = {};
 let cart = [];              // [{ id, qty }]
 let activeCategory = "Semua";
 let user = null;
@@ -40,8 +51,47 @@ function toast(msg){
 }
 function statusLabel(s){
   return {pending_confirmation:"Menunggu konfirmasi", rejected:"Ditolak", confirmed:"Dikonfirmasi",
-    processing:"Diproses", ready:"Siap", out_for_delivery:"Sedang dikirim", completed:"Selesai"}[s] || s;
+    processing:"Diproses", ready:"Siap", out_for_delivery:"Sedang dikirim", completed:"Selesai", cancelled:"Dibatalkan"}[s] || s;
 }
+
+/* ---------- WhatsApp & pembayaran ---------- */
+function paymentInstructions(method, total){
+  const s = paymentSettings;
+  if (method && method.startsWith("transfer_")){
+    const bankKey = method.replace("transfer_", "").toUpperCase();
+    return `Transfer ${rp(total)} ke rekening ${bankKey}: ${(s.bank && s.bank[bankKey]) || "(hubungi admin)"}`;
+  }
+  if (method === "qris") return `Scan QRIS lalu bayar ${rp(total)}` + (s.qrisImageUrl ? ` (gambar QRIS: ${s.qrisImageUrl})` : "");
+  if (method === "ewallet") return `Bayar ${rp(total)} ke: ${s.ewallet || "(hubungi admin)"}`;
+  if (method === "va") return `Bayar ${rp(total)} ke Virtual Account: ${s.va || "(hubungi admin)"}`;
+  return "";
+}
+function toWaNumber(phone){
+  let p = String(phone || "").replace(/\D/g, "");
+  if (p.startsWith("0")) p = "62" + p.slice(1);
+  return p;
+}
+function waLink(phone, text){
+  return `https://wa.me/${toWaNumber(phone)}?text=${encodeURIComponent(text)}`;
+}
+function confirmMessage(o){
+  const pay = PAYMENT_METHODS[o.paymentMethod] || "-";
+  const items = o.items.map(i => `- ${i.name} x${i.qty} = ${rp(i.subtotal)}`).join("\n");
+  const statusTxt = o.status === "pending_confirmation"
+    ? "Pesanan kamu sudah kami terima dan sedang diperiksa admin."
+    : "Pesanan kamu sudah *DIKONFIRMASI*.";
+  return `Halo ${o.customerName}, ini dari WarungKu.\n\n` +
+    `No. pesanan: *${o.orderNumber}*\n${statusTxt}\n\n` +
+    `Rincian:\n${items}\n` +
+    `Ongkir: ${rp(o.deliveryFee || 0)}\n` +
+    `*Total: ${rp(o.total)}*\n\n` +
+    `Metode pembayaran: ${pay}\n${paymentInstructions(o.paymentMethod, o.total)}\n\n` +
+    `Terima kasih sudah belanja di WarungKu!`;
+}
+
+onSnapshot(doc(db, "settings", "payment"), snap => {
+  paymentSettings = snap.exists() ? snap.data() : {};
+}, err => console.error(err));
 
 /* ---------- Modal ---------- */
 function openModal(html){
@@ -195,6 +245,16 @@ $("checkout-open").onclick = () => {
       <option value="delivery">Diantar (+${rp(DELIVERY_FEE)})</option>
     </select>
     <div id="addrWrap" class="hidden"><label>Alamat pengiriman</label><textarea id="cAddress"></textarea></div>
+    <label>Metode pembayaran</label>
+    <select id="cPayment">
+      <option value="transfer_bca">Transfer BCA</option>
+      <option value="transfer_bri">Transfer BRI</option>
+      <option value="transfer_mandiri">Transfer Mandiri</option>
+      <option value="transfer_bni">Transfer BNI</option>
+      <option value="qris">QRIS</option>
+      <option value="ewallet">E-wallet (DANA/OVO/GoPay/ShopeePay)</option>
+      <option value="va">Virtual Account</option>
+    </select>
     <label>Catatan</label><textarea id="cNotes"></textarea>
     <div class="row">
       <button class="secondary-button" id="cancelOrder">Batal</button>
@@ -211,6 +271,7 @@ async function submitOrder(){
   const fulfill = $("cFulfill").value;
   const address = $("cAddress").value.trim();
   const notes = $("cNotes").value.trim();
+  const payMethod = $("cPayment").value;
   if (cname.length < 2) return toast("Isi nama");
   if (phone.length < 8) return toast("Isi nomor telepon yang valid");
   if (fulfill === "delivery" && address.length < 5) return toast("Isi alamat pengiriman");
@@ -231,12 +292,14 @@ async function submitOrder(){
       subtotal += line;
     }
     const deliveryFee = fulfill === "delivery" ? DELIVERY_FEE : 0;
+    const total = subtotal + deliveryFee;
     const orderNumber = "WK-" + genCode(6);
     const accessCode = genCode(6);
     await setDoc(doc(db, "orders", orderNumber), {
       orderNumber, accessCode, customerName: cname, customerPhone: phone,
       fulfillment: fulfill, address: fulfill === "delivery" ? address : "", notes,
-      items, subtotal, deliveryFee, total: subtotal + deliveryFee,
+      paymentMethod: payMethod,
+      items, subtotal, deliveryFee, total,
       status: "pending_confirmation", paymentStatus: "not_started",
       history: [{ status: "pending_confirmation", at: new Date().toISOString() }],
       createdAt: serverTimestamp()
@@ -247,7 +310,10 @@ async function submitOrder(){
     openModal(`<h2>Pesanan terkirim ✅</h2>
       <p>Nomor: <strong>${orderNumber}</strong></p>
       <p>Kode akses: <strong>${accessCode}</strong></p>
-      <p class="muted small">Simpan kedua kode ini. Pesanan menunggu konfirmasi admin dan stok belum dikurangi.</p>
+      <p>Total: <strong>${rp(total)}</strong></p>
+      <p>Metode: ${PAYMENT_METHODS[payMethod]}</p>
+      <p class="muted small">${paymentInstructions(payMethod, total)}</p>
+      <p class="muted small">Simpan nomor dan kode akses untuk melacak status. Pembayaran dikonfirmasi setelah admin memeriksa pembayaranmu.</p>
       <button class="primary-button" id="doneOrder">Tutup</button>`);
     $("doneOrder").onclick = closeModal;
   } catch (e){
@@ -350,6 +416,7 @@ function renderAdminProducts(){
       <button class="secondary-button small-btn" data-savestock="${p.id}">Simpan</button>
       <button class="secondary-button small-btn" data-toggle="${p.id}" data-val="${!p.active}">
         ${p.active ? "Nonaktifkan" : "Aktifkan"}</button>
+      <button class="secondary-button small-btn danger" data-delprod="${p.id}">Hapus</button>
     </div>`).join("");
   el.querySelectorAll("[data-savestock]").forEach(b => b.onclick = async () => {
     const v = parseInt(el.querySelector(`[data-stock="${b.dataset.savestock}"]`).value);
@@ -360,6 +427,20 @@ function renderAdminProducts(){
   el.querySelectorAll("[data-toggle]").forEach(b => b.onclick = () =>
     updateDoc(doc(db, "products", b.dataset.toggle), { active: b.dataset.val === "true" })
   );
+  el.querySelectorAll("[data-delprod]").forEach(b => b.onclick = () => deleteProduct(b.dataset.delprod));
+}
+
+async function deleteProduct(id){
+  const hasOrder = allOrders.some(o => (o.items || []).some(i => i.productId === id));
+  if (hasOrder){
+    if (!confirm("Produk ini pernah dipesan, jadi tidak bisa dihapus permanen. Nonaktifkan saja?")) return;
+    await updateDoc(doc(db, "products", id), { active: false });
+    toast("Produk dinonaktifkan");
+    return;
+  }
+  if (!confirm("Hapus produk ini permanen?")) return;
+  await deleteDoc(doc(db, "products", id));
+  toast("Produk dihapus");
 }
 
 function subscribeOrders(){
@@ -382,7 +463,7 @@ function renderAdminOrders(){
   if (!allOrders.length){ el.innerHTML = '<p class="muted">Belum ada pesanan.</p>'; return; }
   el.innerHTML = allOrders.map(o => `<div class="card">
     <div class="row"><strong>${o.orderNumber}</strong><span class="badge ${o.status}">${statusLabel(o.status)}</span></div>
-    <div class="muted small">${esc(o.customerName)} · ${esc(o.customerPhone)} · ${o.fulfillment === "delivery" ? "Diantar" : "Ambil sendiri"}</div>
+    <div class="muted small">${esc(o.customerName)} · ${esc(o.customerPhone)} · ${o.fulfillment === "delivery" ? "Diantar" : "Ambil sendiri"} · ${PAYMENT_METHODS[o.paymentMethod] || "-"}</div>
     <div class="small">${o.items.map(i => `${esc(i.name)} × ${i.qty}`).join("<br>")}</div>
     <div class="row"><span>Total</span><strong>${rp(o.total)}</strong></div>
     <div class="row">${actionButtons(o)}</div>
@@ -394,13 +475,16 @@ function renderAdminOrders(){
 }
 function actionButtons(o){
   const b = (act, label, cls = "") => `<button class="secondary-button small-btn ${cls}" data-act="${act}" data-oid="${o.id}">${label}</button>`;
-  if (o.status === "pending_confirmation") return b("confirm", "Konfirmasi") + b("reject", "Tolak", "danger");
-  if (o.status === "confirmed" && o.paymentStatus !== "paid") return b("paid", "Tandai lunas");
-  if (o.status === "confirmed") return b("processing", "Mulai diproses");
-  if (o.status === "processing") return b("ready", "Tandai siap");
-  if (o.status === "ready" && o.fulfillment === "delivery") return b("out_for_delivery", "Kirim");
-  if (o.status === "ready" || o.status === "out_for_delivery") return b("completed", "Selesai");
-  return "";
+  const wa = `<a class="secondary-button small-btn" target="_blank" rel="noopener" href="${waLink(o.customerPhone, confirmMessage(o))}">Kirim WA</a>`;
+  let html = "";
+  if (o.status === "pending_confirmation") html = b("confirm", "Konfirmasi") + b("reject", "Tolak", "danger");
+  else if (o.status === "confirmed" && o.paymentStatus !== "paid") html = b("paid", "Tandai lunas");
+  else if (o.status === "confirmed") html = b("processing", "Mulai diproses");
+  else if (o.status === "processing") html = b("ready", "Tandai siap");
+  else if (o.status === "ready" && o.fulfillment === "delivery") html = b("out_for_delivery", "Kirim");
+  else if (o.status === "ready" || o.status === "out_for_delivery") html = b("completed", "Selesai");
+  if (["completed", "rejected", "cancelled"].includes(o.status)) html += b("delete", "Hapus", "danger");
+  return html + wa;
 }
 async function addHistory(id, status, extra = {}){
   const ref = doc(db, "orders", id);
@@ -411,6 +495,12 @@ async function addHistory(id, status, extra = {}){
 async function handleAction(act, o){
   if (!o) return;
   try{
+    if (act === "delete"){
+      if (!confirm("Hapus pesanan " + o.orderNumber + " permanen?")) return;
+      await deleteDoc(doc(db, "orders", o.id));
+      toast("Pesanan dihapus");
+      return;
+    }
     if (act === "confirm"){
       for (const it of o.items){
         const p = await getDoc(doc(db, "products", it.productId));
