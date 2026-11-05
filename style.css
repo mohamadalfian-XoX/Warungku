@@ -1070,3 +1070,57 @@ footer {
 #adminOrders .card,
 #adminProducts .row { margin-bottom: 10px; }
 #adminProducts .row { flex-wrap: wrap; }
+
+/* ===== Tampilan Desktop (layar >= 768px) ===== */
+@media (min-width: 768px) {
+  header .inner,
+  nav,
+  main {
+    max-width: 1200px;
+  }
+
+  /* Produk tampil dalam beberapa kolom */
+  #products {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 16px;
+  }
+  .product-card {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin: 0;
+    padding: 18px;
+    transition: box-shadow .15s ease, transform .15s ease;
+  }
+  .product-card:hover {
+    box-shadow: 0 6px 18px rgba(0, 0, 0, .08);
+    transform: translateY(-2px);
+  }
+  .product-card .primary-button {
+    margin-top: auto;
+  }
+
+  /* Keranjang: panel samping kanan yang lebih ramping */
+  #cart-drawer {
+    width: 380px;
+    max-width: 380px;
+  }
+
+  /* Modal: kotak di tengah layar, bukan layar penuh */
+  .modal {
+    position: fixed;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    width: calc(100% - 48px);
+    max-width: 520px;
+    max-height: 88vh;
+    overflow-y: auto;
+    border-radius: 14px;
+  }
+  /* Modal admin dibuat lebih lebar */
+  .modal:has(#adminProducts) {
+    max-width: 760px;
+  }
+}
